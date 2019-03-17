@@ -17,10 +17,13 @@ import java.util.Map;
 import java.util.Arrays;
 import java.io.File;
 import java.io.OutputStream;
+import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
 
 import java.util.logging.Logger;
 import java.util.logging.Level;
+
+import java.util.Base64;
 
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
@@ -71,9 +74,9 @@ public class JasperReportGenerator {
 	public static void main(String[] args) throws Exception, JSONException, SQLException, IOException {
             Logger lLogger = Logger.getLogger("net.sf.jasperreports");
             lLogger.setLevel(Level.OFF);
-            JSONObject jsonMap = new JSONObject();
-            jsonMap = generateReport(args);
-            System.out.println(jsonMap.toString());
+            JSONObject out = new JSONObject();
+            out = generateReport(args);
+            System.out.println(out);
 	} 
 
 	public static JasperPrint fillReportFromSQLDataSource(JasperReport jasperReport, String connstr, Map<String, Object> parameters)
@@ -90,13 +93,16 @@ public class JasperReportGenerator {
 		return JasperFillManager.fillReport(jasperReport, parameters, new JREmptyDataSource(1)); 		
 	}  
         
-        public static OutputStream savePDFReportToOutputStream(JasperPrint jasperPrint) throws JRException {
+        public static String savePDFReportToOutputStream(JasperPrint jasperPrint) throws JRException {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             OutputStream outputStream = baos;
             OutputStreamExporterOutput exporterOutput = new SimpleOutputStreamExporterOutput(outputStream);
             OutputStream out = exporterOutput.getOutputStream();
             JasperExportManager.exportReportToPdfStream(jasperPrint, out);	
-            return out;
+            
+            String encoded = Base64.getEncoder().encodeToString(baos.toByteArray());
+            
+            return encoded;
         }
         
         public static void savePDFReportToFile(JasperPrint print, String rptOutputFile) throws JRException{
@@ -113,15 +119,16 @@ public class JasperReportGenerator {
         
 	public static JSONObject generateReport(String[] args) throws Exception, JSONException, SQLException, IOException{
 		JSONObject jsonMap = new JSONObject();
-                if(args.length < 3){
+                
+                 if(args.length < 3){
                     jsonMap.put("msg", "Missing required parms");
                     return jsonMap;
                 }
-            
-		String rptInputParms = "";//"{'AgentID':'THURST', 'Text':'Chuck Testa'}";
-		String rptSrcFile = "";//"c:\\source\\jasperreportgenerator\\rpt\\Test.jrxml";
-		String rptOutputFile = "";//"";
-		String connstr = "";//"jdbc:sqlserver://localhost;databaseName=LightTaskApp;user=LTAdmin;password=*****;";
+                 
+		String rptInputParms = "";// "{'AgentID':'THURST', 'Text':'Chuck Testa'}";
+		String rptSrcFile = "";// "c:\\source\\jasperreportgenerator\\rpt\\Test.jrxml";
+		String rptOutputFile = "";// "";
+		String connstr = "";// "jdbc:sqlserver://localhost;databaseName=LightTaskApp;user=LTAdmin;password=***;";
 		String datasource = "";// "mssql";
                 
                 for(int i = 0; i < args.length; i++){
@@ -199,7 +206,7 @@ public class JasperReportGenerator {
 			
 			tmpNanoSeconds = System.nanoTime();
 
-                        OutputStream out = savePDFReportToOutputStream(print);
+                        String out = savePDFReportToOutputStream(print);
                         
                         if(rptOutputFile != null && !rptOutputFile.isEmpty()){
                             savePDFReportToFile(print, rptOutputFile);
@@ -207,12 +214,9 @@ public class JasperReportGenerator {
         
                         jsonMap.put("data", out);
 			perfLog += "Export time : " + ((System.nanoTime() - tmpNanoSeconds)/ 1000000000.0) + " s. ";
-			
-		// }catch(JRException e){
-		// 	return e.getMessage();
 		}catch(JSONException e){
                         e.printStackTrace();
-                         jsonMap.put("msg", e.getMessage() + " " + Arrays.toString(e.getStackTrace()));
+                        jsonMap.put("msg", e.getMessage() + " " + Arrays.toString(e.getStackTrace()));
 			return jsonMap;
 		}catch(SQLException e){
                         e.printStackTrace();
@@ -223,6 +227,7 @@ public class JasperReportGenerator {
                         jsonMap.put("msg", e.getMessage() + " " + Arrays.toString(e.getStackTrace()));
 			return jsonMap;
 		}
+                
                 jsonMap.put("msg", "Success Stats : " + perfLog);
 		return jsonMap;
 	}
