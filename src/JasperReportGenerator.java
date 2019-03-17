@@ -16,6 +16,11 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Arrays;
 import java.io.File;
+import java.io.OutputStream;
+import java.io.ByteArrayOutputStream;
+
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 import javax.print.PrintService;
 import javax.print.PrintServiceLookup;
@@ -54,6 +59,8 @@ import net.sf.jasperreports.export.OutputStreamExporterOutput;
 import net.sf.jasperreports.export.SimpleExporterInput;
 import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 import net.sf.jasperreports.export.SimplePdfExporterConfiguration;
+
+import net.sf.jasperreports.engine.JasperExportManager;
 //import net.sf.jasperreports.export.SimplePrintServiceExporterConfiguration;
 //import net.sf.jasperreports.functions.*;
 
@@ -62,8 +69,11 @@ import net.sf.jasperreports.export.SimplePdfExporterConfiguration;
 public class JasperReportGenerator {
    @SuppressWarnings("deprecation")
 	public static void main(String[] args) throws Exception, JSONException, SQLException, IOException {
-		String result = generateReport(args);
-		System.out.println(result);
+            Logger lLogger = Logger.getLogger("net.sf.jasperreports");
+            lLogger.setLevel(Level.OFF);
+            JSONObject jsonMap = new JSONObject();
+            jsonMap = generateReport(args);
+            System.out.println(jsonMap.toString());
 	} 
 
 	public static JasperPrint fillReportFromSQLDataSource(JasperReport jasperReport, String connstr, Map<String, Object> parameters)
@@ -79,23 +89,37 @@ public class JasperReportGenerator {
 	{
 		return JasperFillManager.fillReport(jasperReport, parameters, new JREmptyDataSource(1)); 		
 	}  
- 
-	public static String generateReport(String[] args) throws Exception, JSONException, SQLException, IOException{
-		if(args.length < 4){
-		 	return "Missing required parms. ";
-		}
-		  
-		String rptSrcFile = args[0];
-		String rptOutputFile = args[1];
-		String rptInputParms = args[2];
-		String datasource = args[3];
-		String connstr = args[4];
-
-		// String rptInputParms = "{'AgentID':'THURST', 'Text':'Chuck Testa'}";
-		// String rptSrcFile = "c:\\source\\jasperreportgenerator\\rpt\\Test.jrxml";
-		// String rptOutputFile = "c:\\source\\jasperreportgenerator\\rpt\\output\\Test.pdf";
-		// String connstr = "jdbc:sqlserver://localhost;databaseName=LightTaskApp;user=LTAdmin;password=LT123;";
-		// String datasource = "mssql";
+        
+        public static OutputStream savePDFReportToOutputStream(JasperPrint jasperPrint) throws JRException {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            OutputStream outputStream = baos;
+            OutputStreamExporterOutput exporterOutput = new SimpleOutputStreamExporterOutput(outputStream);
+            OutputStream out = exporterOutput.getOutputStream();
+            JasperExportManager.exportReportToPdfStream(jasperPrint, out);	
+            return out;
+        }
+        
+        public static void savePDFReportToFile(JasperPrint print, String rptOutputFile) throws JRException{
+            JRPdfExporter exporter = new JRPdfExporter();
+            ExporterInput exporterInput = new SimpleExporterInput(print);
+            exporter.setExporterInput(exporterInput);
+                              
+            OutputStreamExporterOutput exporterOutput = new SimpleOutputStreamExporterOutput(rptOutputFile);
+            exporter.setExporterOutput(exporterOutput);
+            SimplePdfExporterConfiguration configuration = new SimplePdfExporterConfiguration();
+            exporter.setConfiguration(configuration);
+            exporter.exportReport();
+        }
+        
+	public static JSONObject generateReport(String[] args) throws Exception, JSONException, SQLException, IOException{
+		JSONObject jsonMap = new JSONObject();
+               
+            
+		String rptInputParms = "{'AgentID':'THURST', 'Text':'Chuck Testa'}";
+		String rptSrcFile = "c:\\source\\jasperreportgenerator\\rpt\\Test.jrxml";
+		String rptOutputFile = "";
+		String connstr = "jdbc:sqlserver://localhost;databaseName=LightTaskApp;user=LTAdmin;password=LT123;";
+		String datasource = "mssql";
 
 		String perfLog = "";
 		long tmpNanoSeconds = 0;
@@ -135,9 +159,9 @@ public class JasperReportGenerator {
 			}
 
 			tmpNanoSeconds = System.nanoTime();
-
-			JasperPrint print;
-
+                        
+                        JasperPrint print;
+                        
 			switch(datasource.toUpperCase()){
 				case "MSSQL":
 					print = fillReportFromSQLDataSource(jasperReport, connstr, parameters);
@@ -152,32 +176,32 @@ public class JasperReportGenerator {
 			
 			tmpNanoSeconds = System.nanoTime();
 
-			// export to pdf
-			JRPdfExporter exporter = new JRPdfExporter();
-			ExporterInput exporterInput = new SimpleExporterInput(print);
-			exporter.setExporterInput(exporterInput);
-			OutputStreamExporterOutput exporterOutput = new SimpleOutputStreamExporterOutput(rptOutputFile);
-			exporter.setExporterOutput(exporterOutput);
-			SimplePdfExporterConfiguration configuration = new SimplePdfExporterConfiguration();
-			exporter.setConfiguration(configuration);
-			exporter.exportReport(); 
-
+                        OutputStream out = savePDFReportToOutputStream(print);
+                        
+                        if(rptOutputFile != null && !rptOutputFile.isEmpty()){
+                            savePDFReportToFile(print, rptOutputFile);
+                        }
+        
+                        jsonMap.put("data", out);
 			perfLog += "Export time : " + ((System.nanoTime() - tmpNanoSeconds)/ 1000000000.0) + " s. ";
 			
 		// }catch(JRException e){
 		// 	return e.getMessage();
 		}catch(JSONException e){
-			return e.getMessage();
+                        jsonMap.put("msg", e.getMessage());
+			return jsonMap;
 		}catch(SQLException e){
-			return e.getMessage();
+			jsonMap.put("msg", e.getMessage());
+			return jsonMap;
 	   	//}catch(IOException e){
 		//	return e.getMessage();
    		}catch(Exception e){
 			e.printStackTrace();
-			return e.getMessage() + " " + Arrays.toString(e.getStackTrace());
-
+                        jsonMap.put("msg", e.getMessage() + " " + Arrays.toString(e.getStackTrace()));
+			return jsonMap;
 		}
-		return "Success Stats : " + perfLog;
+                jsonMap.put("msg", "Success Stats : " + perfLog);
+		return jsonMap;
 	}
 }
 
