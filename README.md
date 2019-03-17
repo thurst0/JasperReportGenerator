@@ -6,7 +6,7 @@ It will return a JSON string on success or error.
 On error JSON string will contain "msg".  Where "msg" is the error and call stack.
 On success JSON string will contain "msg" and "data" properties.  Where "msg" is the performance statitstics, and "data" is the PDF as base64 output stream.
 
-1.) Jasper JRXML or JASPER file path.  If it is passed the JRXML it will re-compile the JASPER file.  Sometimes if you put in the JASPER file that was compiled by JasperReports Studio, it won't work because of versioning.  It should work if you let the JAR compile your JRXML. 
+1.) Jasper JRXML or JASPER file path.  If it is passed the JRXML it will re-compile the JASPER file.  Sometimes if you put in the JASPER file that was compiled by JasperReports Studio, it won't work because of versioning.  It should work if you let the JAR compile your JRXML.   
 2.) JSON parameters.  These are the parameters you want passed to your report in JSON format.    
 3.) Datasource.  Currently only supports MSSQL, or no datasource.  TODO for mysql, postgres, csv, json.  
 4.) Datasource connection string (optional)    
