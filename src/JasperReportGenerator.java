@@ -113,13 +113,36 @@ public class JasperReportGenerator {
         
 	public static JSONObject generateReport(String[] args) throws Exception, JSONException, SQLException, IOException{
 		JSONObject jsonMap = new JSONObject();
-               
+                if(args.length < 3){
+                    jsonMap.put("msg", "Missing required parms");
+                    return jsonMap;
+                }
             
-		String rptInputParms = "{'AgentID':'THURST', 'Text':'Chuck Testa'}";
-		String rptSrcFile = "c:\\source\\jasperreportgenerator\\rpt\\Test.jrxml";
-		String rptOutputFile = "";
-		String connstr = "jdbc:sqlserver://localhost;databaseName=LightTaskApp;user=LTAdmin;password=LT123;";
-		String datasource = "mssql";
+		String rptInputParms = "";//"{'AgentID':'THURST', 'Text':'Chuck Testa'}";
+		String rptSrcFile = "";//"c:\\source\\jasperreportgenerator\\rpt\\Test.jrxml";
+		String rptOutputFile = "";//"";
+		String connstr = "";//"jdbc:sqlserver://localhost;databaseName=LightTaskApp;user=LTAdmin;password=*****;";
+		String datasource = "";// "mssql";
+                
+                for(int i = 0; i < args.length; i++){
+                    switch(i){
+                        case 0:
+                            rptSrcFile = args[i];
+                            break;  
+                        case 1:
+                            rptInputParms = args[i];
+                            break;
+                        case 2:
+                            datasource = args[i];
+                            break;
+                        case 3:
+                            connstr = args[i];
+                            break;
+                        case 4:
+                            rptOutputFile = args[i];
+                            break;
+                    }
+                }
 
 		String perfLog = "";
 		long tmpNanoSeconds = 0;
@@ -188,13 +211,13 @@ public class JasperReportGenerator {
 		// }catch(JRException e){
 		// 	return e.getMessage();
 		}catch(JSONException e){
-                        jsonMap.put("msg", e.getMessage());
+                        e.printStackTrace();
+                         jsonMap.put("msg", e.getMessage() + " " + Arrays.toString(e.getStackTrace()));
 			return jsonMap;
 		}catch(SQLException e){
-			jsonMap.put("msg", e.getMessage());
+                        e.printStackTrace();
+			 jsonMap.put("msg", e.getMessage() + " " + Arrays.toString(e.getStackTrace()));
 			return jsonMap;
-	   	//}catch(IOException e){
-		//	return e.getMessage();
    		}catch(Exception e){
 			e.printStackTrace();
                         jsonMap.put("msg", e.getMessage() + " " + Arrays.toString(e.getStackTrace()));
